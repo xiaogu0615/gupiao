@@ -1,4 +1,4 @@
-name: Update Bitable Prices
+name: Update Bitable Prices # 你的工作流名称
 
 on:
   schedule:
@@ -6,7 +6,7 @@ on:
   workflow_dispatch:         # 允许手动运行
 
 jobs:
-  run:
+  run: # 这是你的主要作业
     runs-on: ubuntu-latest
 
     steps:
@@ -16,13 +16,17 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: "3.11"
+          python-version: "3.11" # 建议使用明确的 Python 版本
 
       - name: Install dependencies
-        run: pip install -r requirements.txt
+        # 修正点 1: 使用 working-directory 设置当前工作目录
+        working-directory: .github/workflows # <-- 添加这一行
+        run: pip install -r requirements.txt # <-- 现在可以直接写文件名了
 
       - name: Run updater script
-        run: python update_prices_single_table.py
+        # 修正点 2: 同样，为脚本运行设置工作目录
+        working-directory: .github/workflows # <-- 添加这一行
+        run: python update_prices_single_table.py # <-- 直接运行脚本名
         env:
           FEISHU_APP_ID: ${{ secrets.FEISHU_APP_ID }}
           FEISHU_APP_SECRET: ${{ secrets.FEISHU_APP_SECRET }}
@@ -31,30 +35,3 @@ jobs:
           CODE_FIELD: ${{ secrets.CODE_FIELD }}
           PRICE_FIELD: ${{ secrets.PRICE_FIELD }}
           UPDATED_AT_FIELD: ${{ secrets.UPDATED_AT_FIELD }}
-          # ... 你的工作流文件的其他部分 ...
-
-jobs:
-  build:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4 # 这一步是必须的，它会把你的整个仓库克隆到 runner 上
-
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.x' # 根据你的项目需求设置 Python 版本
-
-      - name: Install dependencies
-        run: pip install -r .github/workflows/requirements.txt # <-- 修改这里！
-        # 注意：这里是相对于仓库根目录的路径
-        # 如果你的工作流文件和 requirements.txt 都在 .github/workflows/ 目录下，
-        # 那么从仓库根目录看，requirements.txt 的路径就是 .github/workflows/requirements.txt
-
-      - name: Run your script # 假设你要运行 update_prices_single_table.py
-        run: python .github/workflows/update_prices_single_table.py # <-- 同样，指定完整路径
-        # 或者，如果你想先 cd 到该目录再运行：
-        # run: |
-        #   cd .github/workflows
-        #   python update_prices_single_table.py
-
-# ... 你的工作流文件的其他部分 ...
