@@ -143,3 +143,37 @@ def main():
 
 if __name__ == "__main__":
     main()
+    name: Update Bitable Prices
+
+on:
+  schedule:
+    - cron: "*/15 * * * *"  # 每 15 分钟执行一次（UTC 时间）
+  workflow_dispatch:         # 允许手动运行
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Run updater script
+        run: python update_prices_single_table.py
+        env:
+          FEISHU_APP_ID: ${{ secrets.FEISHU_APP_ID }}
+          FEISHU_APP_SECRET: ${{ secrets.FEISHU_APP_SECRET }}
+          FEISHU_APP_TOKEN: ${{ secrets.FEISHU_APP_TOKEN }}
+          TABLE_ID: ${{ secrets.TABLE_ID }}
+          CODE_FIELD: ${{ secrets.CODE_FIELD }}
+          PRICE_FIELD: ${{ secrets.PRICE_FIELD }}
+          UPDATED_AT_FIELD: ${{ secrets.UPDATED_AT_FIELD }}
+
