@@ -1,0 +1,47 @@
+name: Update Bitable Prices # 工作流名称，显示在 GitHub Actions 页面
+
+on:
+  schedule:
+    # cron 表达式用于定时触发。
+    # "*/15 * * * *" 表示每 15 分钟运行一次。
+    # 注意：GitHub Actions 使用 UTC 时间。
+    # 例如，如果你希望在北京时间上午 9:00 运行，你需要转换为 UTC 时间。
+    # 北京时间 = UTC+8。
+    # 如果你想在北京时间 9:00-17:00 每小时运行一次，可以这样设置：
+    # - cron: "0 1-9 * * *" # UTC 1:00-9:00 对应北京时间 9:00-17:00
+    - cron: "*/15 * * * *" # 每15分钟运行一次 (UTC时间)
+  
+  workflow_dispatch:
+    # 允许你手动从 GitHub Actions 页面触发此工作流。
+    # 当你第一次设置好后，可以通过这个功能立即测试运行。
+
+jobs:
+  run:
+    runs-on: ubuntu-latest # 指定运行环境，这里使用最新的 Ubuntu 虚拟机
+
+    steps:
+      - name: Checkout repository # 步骤名称：拉取代码
+        uses: actions/checkout@v4 # 使用 GitHub 官方 action 来拉取仓库代码
+
+      - name: Set up Python # 步骤名称：设置 Python 环境
+        uses: actions/setup-python@v5 # 使用 GitHub 官方 action 来设置 Python
+        with:
+          python-version: "3.11" # 指定 Python 版本，建议使用 3.9+ 以支持 zoneinfo
+
+      - name: Install dependencies # 步骤名称：安装 Python 依赖
+        run: pip install -r requirements.txt # 执行命令安装 requirements.txt 中列出的库
+
+      - name: Run updater script # 步骤名称：运行更新脚本
+        run: python update_prices_single_table.py # 执行 Python 脚本
+        env: # 定义脚本运行时的环境变量
+          FEISHU_APP_ID: ${{ secrets.FEISHU_APP_ID }} # 从 GitHub Secrets 获取 App ID
+          FEISHU_APP_SECRET: ${{ secrets.FEISHU_APP_SECRET }} # 从 GitHub Secrets 获取 App Secret
+          FEISHU_APP_TOKEN: ${{ secrets.FEISHU_APP_TOKEN }} # 从 GitHub Secrets 获取多维表格 App Token
+          TABLE_ID: ${{ secrets.TABLE_ID }} # 从 GitHub Secrets 获取表格 ID
+          
+          # 可选：如果你的列名不是“代码”、“最新价”、“最新价更新时间”，
+          # 则需要设置以下环境变量来覆盖脚本中的默认值。
+          # 否则，可以不设置这些 Secrets。
+          CODE_FIELD: ${{ secrets.CODE_FIELD }} 
+          PRICE_FIELD: ${{ secrets.PRICE_FIELD }}
+          UPDATED_AT_FIELD: ${{ secrets.UPDATED_AT_FIELD }}
