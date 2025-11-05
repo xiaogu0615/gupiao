@@ -6,7 +6,6 @@ import requests
 from datetime import datetime
 from zoneinfo import ZoneInfo
 
-
 BASE = "https://open.feishu.cn/open-apis"
 
 FEISHU_APP_ID = os.getenv("FEISHU_APP_ID")
@@ -17,7 +16,6 @@ TABLE_ID = os.getenv("TABLE_ID")
 CODE_FIELD = os.getenv("CODE_FIELD", "代码")
 PRICE_FIELD = os.getenv("PRICE_FIELD", "最新价")
 UPDATED_AT_FIELD = os.getenv("UPDATED_AT_FIELD", "最新价更新时间")
-
 
 class FeishuClient:
     def __init__(self, app_id, app_secret):
@@ -66,13 +64,11 @@ class FeishuClient:
             raise RuntimeError(f"Update record failed: {data}")
         return data["data"]
 
-
 def normalize_symbol(symbol: str) -> str:
     s = str(symbol).strip().upper()
     if s.endswith(".SH"):
         s = s[:-3] + ".SS"
     return s
-
 
 def fetch_prices(symbols):
     import yfinance as yf
@@ -97,7 +93,6 @@ def fetch_prices(symbols):
         except Exception as e:
             print(f"[error] 获取 {sym} 行情失败: {e}")
     return results
-
 
 def main():
     client = FeishuClient(FEISHU_APP_ID, FEISHU_APP_SECRET)
@@ -140,40 +135,5 @@ def main():
 
     print(f"更新完成：{updated}/{len(records)} 行。")
 
-
 if __name__ == "__main__":
     main()
-    name: Update Bitable Prices
-
-on:
-  schedule:
-    - cron: "*/15 * * * *"  # 每 15 分钟执行一次（UTC 时间）
-  workflow_dispatch:         # 允许手动运行
-
-jobs:
-  run:
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.11"
-
-      - name: Install dependencies
-        run: pip install -r requirements.txt
-
-      - name: Run updater script
-        run: python update_prices_single_table.py
-        env:
-          FEISHU_APP_ID: ${{ secrets.FEISHU_APP_ID }}
-          FEISHU_APP_SECRET: ${{ secrets.FEISHU_APP_SECRET }}
-          FEISHU_APP_TOKEN: ${{ secrets.FEISHU_APP_TOKEN }}
-          TABLE_ID: ${{ secrets.TABLE_ID }}
-          CODE_FIELD: ${{ secrets.CODE_FIELD }}
-          PRICE_FIELD: ${{ secrets.PRICE_FIELD }}
-          UPDATED_AT_FIELD: ${{ secrets.UPDATED_AT_FIELD }}
-
