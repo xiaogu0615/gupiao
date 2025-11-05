@@ -1,12 +1,12 @@
-name: Update Bitable Prices # 你的工作流名称
+name: Update Bitable Prices
 
 on:
   schedule:
-    - cron: "*/15 * * * *"  # 每15分钟执行一次（UTC）
-  workflow_dispatch:         # 允许手动运行
+    - cron: "*/15 * * * *"
+  workflow_dispatch:
 
 jobs:
-  run: # 这是你的主要作业
+  run:
     runs-on: ubuntu-latest
 
     steps:
@@ -16,17 +16,31 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: "3.11" # 建议使用明确的 Python 版本
+          python-version: "3.11"
+
+      # --- 诊断步骤开始 ---
+      - name: Diagnose - Print current working directory
+        run: pwd
+
+      - name: Diagnose - List files in current directory
+        run: ls -F
+
+      - name: Diagnose - List files in .github directory
+        run: ls -F .github/
+
+      - name: Diagnose - List files in .github/workflows directory
+        run: ls -F .github/workflows/
+        # 如果你怀疑文件可能在其他地方，可以添加更多 ls 命令
+      # --- 诊断步骤结束 ---
 
       - name: Install dependencies
-        # 修正点 1: 使用 working-directory 设置当前工作目录
-        working-directory: .github/workflows # <-- 添加这一行
-        run: pip install -r requirements.txt # <-- 现在可以直接写文件名了
+        # 再次尝试使用 working-directory，这是最推荐的方式
+        working-directory: .github/workflows # <-- 确保这一行和缩进正确
+        run: pip install -r requirements.txt
 
       - name: Run updater script
-        # 修正点 2: 同样，为脚本运行设置工作目录
-        working-directory: .github/workflows # <-- 添加这一行
-        run: python update_prices_single_table.py # <-- 直接运行脚本名
+        working-directory: .github/workflows # <-- 确保这一行和缩进正确
+        run: python update_prices_single_table.py
         env:
           FEISHU_APP_ID: ${{ secrets.FEISHU_APP_ID }}
           FEISHU_APP_SECRET: ${{ secrets.FEISHU_APP_SECRET }}
