@@ -13,7 +13,7 @@ FEISHU_APP_SECRET = os.getenv("FEISHU_APP_SECRET")
 FEISHU_APP_TOKEN = os.getenv("FEISHU_APP_TOKEN")
 TABLE_ID = os.getenv("TABLE_ID")
 
-CODE_FIELD = os.getenv("CODE_FIELD", "代码和股票名称")
+CODE_FIELD = os.getenv("CODE_FIELD", "股票代码和名称")
 PRICE_FIELD = os.getenv("PRICE_FIELD", "当日股价")
 UPDATED_AT_FIELD = os.getenv("UPDATED_AT_FIELD", "最新价更新时间")
 
