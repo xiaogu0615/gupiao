@@ -1,4 +1,3 @@
 requests
 yfinance
-python-dotenv
-
+python-dotenv # 仅用于本地运行，在 GitHub Actions 中不是严格必需，但保留无害
