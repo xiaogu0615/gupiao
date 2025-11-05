@@ -38,3 +38,39 @@ def update_record(self, app_token, table_id, record_id, fields: dict):
     if data.get("code") != 0:
         raise RuntimeError(f"Update record failed: {data}")
     return data["data"]
+    rows = client.list_records(FEISHU_APP_TOKEN, TABLE_ID)
+records = []
+codes = []
+for r in rows:
+    fields = r.get("fields", {})
+    code = fields.get(CODE_FIELD)
+    if code and str(code).strip():
+        code_str = str(code).strip()
+        records.append({"record_id": r["record_id"], "code": code_str})
+        codes.append(code_str)
+
+if not codes:
+    print(f"在表 {TABLE_ID} 中未发现列“{CODE_FIELD}”或该列为空，请填写代码或设置 CODE_FIELD 环境变量为正确的列名。")
+    return
+
+prices = fetch_prices(codes)
+now_str = datetime.now(ZoneInfo("Asia/Shanghai")).strftime("%Y-%m-%d %H:%M:%S")
+
+updated = 0
+for rec in records:
+    code = rec["code"]
+    record_id = rec["record_id"]
+    price = prices.get(code)
+    if price is None:
+        continue
+    fields_to_update = {
+        PRICE_FIELD: price,
+        UPDATED_AT_FIELD: now_str,
+    }
+    try:
+        client.update_record(FEISHU_APP_TOKEN, TABLE_ID, record_id, fields_to_update)
+        updated += 1
+    except Exception as e:
+        print(f"[error] 更新 {code} 失败: {e}")
+
+print(f"更新完成：{updated}/{len(records)} 行。")
