@@ -2,15 +2,23 @@ import os
 import requests
 import json
 import pandas as pd
-import yfinance as yf # 引入 yfinance 库
+import yfinance as yf
 
-# 1. 配置
+# --- 配置区 (CONF_START) ---
 APP_ID = os.getenv("FEISHU_APP_ID")
 APP_SECRET = os.getenv("FEISHU_APP_SECRET")
 BASE_TOKEN = os.getenv("FEISHU_BASE_TOKEN")
 
-# 你的 Table IDs
-ASSETS_TABLE_ID = "tblTFq4Cqsz0SSa1" # 资产行情表 ID
+# 表格 ID 和字段 ID 映射
+ASSETS_TABLE_ID = "tblTFq4Cqsz0SSa1" 
+
+# 中文字段名到 Field ID 的映射 (根据你的输入定制)
+FIELD_ID_MAP = {
+    "Code": "fldaIfMQC8",
+    "Type": "fldwUSEPXS",
+    "Price": "fldycnGfq3", 
+}
+# --- 配置区 (CONF_END) ---
 
 # 飞书 API 终点
 FEISHU_AUTH_URL = "https://open.feishu.cn/open-apis/auth/v3/app_access_token/internal"
@@ -30,8 +38,7 @@ class FeishuClient:
         }
 
     def _get_app_access_token(self):
-        # ... (获取 Token 的代码保持不变，不再重复贴出) ...
-        """发送请求获取 App Access Token"""
+        """发送请求获取 App Access Token (代码与之前一致)"""
         payload = {"app_id": self.app_id, "app_secret": self.app_secret}
         headers = {"Content-Type": "application/json"}
         response = requests.post(FEISHU_AUTH_URL, headers=headers, data=json.dumps(payload))
@@ -43,52 +50,61 @@ class FeishuClient:
             raise Exception(f"获取 App Token 失败: {data.get('msg')}")
 
     def _get_table_data(self, table_id):
-        """通用方法：从飞书表格中读取所有记录"""
+        """从飞书表格中读取所有记录（包括记录ID）"""
         url = f"{FEISHU_API_BASE}/{self.base_token}/tables/{table_id}/records"
-        
-        # 飞书 API 需要分页读取，这里只演示读取第一页
-        print(f"正在读取表格数据: {table_id}...")
-        
         response = requests.get(url, headers=self.headers, params={"page_size": 100})
         response.raise_for_status()
         data = response.json()
         
         if data.get("code") == 0:
-            records = data["data"]["items"]
-            print(f"读取成功，共 {len(records)} 条记录。")
-            
-            # 将飞书返回的格式（records[i]['fields']）转换为 Python 列表
-            return [record['fields'] for record in records]
+            print(f"读取成功，共 {len(data['data']['items'])} 条记录。")
+            return data["data"]["items"] # 返回包含 record_id 的完整记录
         else:
             raise Exception(f"读取表格失败: {data.get('msg')}")
+    
+    def _update_records(self, table_id, records_to_update):
+        """更新飞书表格中的记录"""
+        url = f"{FEISHU_API_BASE}/{self.base_token}/tables/{table_id}/records"
+        
+        # 飞书更新记录需要用 POST 方法，并且需要带上记录 ID (record_id)
+        payload = {
+            "records": records_to_update
+        }
+
+        print(f"正在更新 {len(records_to_update)} 条记录到飞书...")
+        response = requests.post(url, headers=self.headers, data=json.dumps(payload), params={"value_input_option": "custom"})
+        response.raise_for_status()
+        data = response.json()
+
+        if data.get("code") == 0:
+            print("数据成功写入飞书！✅")
+        else:
+            print(f"写入失败，飞书返回错误: {data.get('msg')}")
+            # 打印失败的记录，方便调试
+            print(f"失败记录: {data.get('data', {}).get('failure', [])}")
 
 
-# --- 核心数据获取函数 ---
-
+# --- 核心数据获取函数 (与之前一致) ---
 def fetch_yfinance_price(symbols):
     """使用 yfinance 获取股票/ETF/外汇/加密货币的价格"""
+    # ... (代码与之前一致，省略重复内容) ...
     if not symbols:
         return {}
     
     ticker_data = yf.download(symbols, period="1d", progress=False)
     prices = {}
     
-    # yfinance 返回的数据结构是 DataFrame，如果是多个 Symbol，则需要特殊处理
     if len(symbols) == 1:
-        # 单个 Symbol 的价格直接从 'Close' 列获取
         prices[symbols[0]] = ticker_data['Close'].iloc[-1]
     else:
-        # 多个 Symbol 的价格从 DataFrame 的最后一行的 'Close' 索引获取
         for symbol in symbols:
-            # 确保数据存在，取最近一个交易日的收盘价
+            # 确保数据存在
             if 'Close' in ticker_data:
                  prices[symbol] = ticker_data['Close'][symbol].iloc[-1]
             elif 'close' in ticker_data:
                 prices[symbol] = ticker_data['close'][symbol].iloc[-1]
             
-    print(f"Yahoo Finance 价格获取成功: {prices}")
     return prices
-
 
 # --- 主程序入口 ---
 def main():
@@ -98,25 +114,44 @@ def main():
 
     try:
         feishu_client = FeishuClient(APP_ID, APP_SECRET, BASE_TOKEN)
-        print("飞书 API 连接初始化完成。")
-
-        # 1. 从飞书读取资产列表
-        assets_data = feishu_client._get_table_data(ASSETS_TABLE_ID)
         
-        # 2. 准备 yfinance 股票代码列表
+        # 1. 从飞书读取资产列表 (获取所有记录的 record_id)
+        assets_records = feishu_client._get_table_data(ASSETS_TABLE_ID)
+        
         yfinance_symbols = []
-        for asset in assets_data:
-            # 假设你的资产表里有一个字段叫 'Code'
-            if asset.get('Code'): 
-                yfinance_symbols.append(asset['Code'])
+        record_map = {} # 用于存储 record_id 和 symbol 的映射
         
-        # 3. 获取实时价格
+        for record in assets_records:
+            symbol = record['fields'].get(FIELD_ID_MAP["Code"])
+            if symbol: 
+                yfinance_symbols.append(symbol)
+                record_map[symbol] = record['record_id'] # 记录每一行数据本身的ID
+        
+        # 2. 获取实时价格
         realtime_prices = fetch_yfinance_price(yfinance_symbols)
 
-        # TODO: 第四步：将价格更新回飞书表格 (下一阶段实现)
+        # 3. 准备更新数据包
+        updates = []
+        price_field_id = FIELD_ID_MAP["Price"]
+        
+        for symbol, price in realtime_prices.items():
+            if symbol in record_map:
+                updates.append({
+                    "record_id": record_map[symbol],
+                    "fields": {
+                        # 将价格写入价格字段 (Price)
+                        price_field_id: round(price, 4) # 保留四位小数
+                    }
+                })
+
+        # 4. 写入飞书表格
+        if updates:
+            feishu_client._update_records(ASSETS_TABLE_ID, updates)
+        else:
+            print("没有找到需要更新的资产。")
         
     except Exception as e:
         print(f"程序运行出错: {e}")
 
-if __name__ == "__main__':
+if __name__ == '__main__':
     main()
