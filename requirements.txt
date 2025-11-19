@@ -1,5 +1,3 @@
 requests
-pandas # 强大的数据处理库，用于计算盈亏和净值
-requests
 pandas
 yfinance
