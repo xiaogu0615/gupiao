@@ -1,0 +1,30 @@
+name: 💰 Portfolio Price Update
+
+on:
+  # UTC时间 0点，即北京时间早上 8 点运行
+  schedule:
+    - cron: '0 0 * * *' 
+
+jobs:
+  update-prices:
+    runs-on: ubuntu-latest
+    steps:
+    - name: 1. 检查代码
+      uses: actions/checkout@v4
+
+    - name: 2. 设置Python环境
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.11' 
+
+    - name: 3. 安装依赖
+      # 需要一个 requirements.txt 文件
+      run: pip install -r requirements.txt 
+
+    - name: 4. 运行主脚本
+      run: python main.py
+      env:
+        # 从你的 GitHub Secrets 中安全注入 App ID 和 Secret
+        FEISHU_APP_ID: ${{ secrets.FEISHU_APP_ID }}
+        FEISHU_APP_SECRET: ${{ secrets.FEISHU_APP_SECRET }}
+        FEISHU_BASE_TOKEN: ${{ secrets.FEISHU_BASE_TOKEN }}
